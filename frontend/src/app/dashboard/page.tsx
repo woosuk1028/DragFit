@@ -49,25 +49,31 @@ export default function DashboardPage() {
 
   if (!hydrated || !isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-500">
-        Loading...
+      <div className="min-h-screen flex items-center justify-center bg-neutral-50">
+        <p className="text-sm text-neutral-400 tracking-widest uppercase">Loading</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <nav className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-gray-900">Fashion Coordinator</h1>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-600">
-              안녕하세요, <span className="font-medium">{user?.name}</span>님
+    <div className="min-h-screen bg-neutral-50">
+      <nav className="bg-white border-b border-neutral-200/80 sticky top-0 z-30 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+        <div className="max-w-7xl mx-auto px-6 h-14 flex justify-between items-center">
+          <div className="flex items-baseline gap-2">
+            <h1 className="text-base font-semibold tracking-tight text-neutral-900">DragFit</h1>
+            <span className="text-[11px] text-neutral-400 tracking-widest uppercase hidden sm:inline">
+              Outfit Builder
+            </span>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-neutral-600 hidden sm:block">
+              <span className="text-neutral-400">@</span>
+              <span className="font-medium ml-0.5">{user?.name}</span>
             </span>
             <button
               type="button"
               onClick={handleLogout}
-              className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded hover:bg-red-700"
+              className="px-3 py-1.5 text-xs font-medium text-neutral-700 border border-neutral-200 rounded-md hover:bg-neutral-100 transition"
             >
               로그아웃
             </button>
@@ -75,28 +81,28 @@ export default function DashboardPage() {
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
-          <div className="bg-white rounded-lg shadow">
-            <div className="border-b border-gray-200 flex">
+          <div className="bg-white rounded-2xl border border-neutral-200/80 shadow-sm">
+            <div className="border-b border-neutral-200/80 flex">
               <TabButton active={activeTab === 'builder'} onClick={() => setActiveTab('builder')}>
                 코디 만들기
               </TabButton>
               <TabButton active={activeTab === 'list'} onClick={() => setActiveTab('list')}>
-                내 코디 목록
+                내 코디
               </TabButton>
             </div>
-            <div className="p-5">
+            <div className="p-6">
               {activeTab === 'builder' && <OutfitCanvas onOutfitSaved={loadOutfits} />}
               {activeTab === 'list' && <OutfitList />}
             </div>
           </div>
 
-          <div>
+          <aside>
             <ImageUploader />
-          </div>
+          </aside>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
@@ -114,13 +120,14 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex-1 py-3 px-5 text-center font-medium transition ${
-        active
-          ? 'border-b-2 border-blue-500 text-blue-600'
-          : 'text-gray-600 hover:text-gray-900'
+      className={`flex-1 py-3.5 px-5 text-sm text-center font-medium transition relative ${
+        active ? 'text-neutral-900' : 'text-neutral-400 hover:text-neutral-600'
       }`}
     >
       {children}
+      {active && (
+        <span className="absolute bottom-0 left-0 right-0 h-px bg-neutral-900" />
+      )}
     </button>
   );
 }

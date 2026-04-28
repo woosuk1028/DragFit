@@ -18,10 +18,15 @@ export default function HomePage() {
   }, [isAuthenticated, router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600">
-      <div className="text-center text-white">
-        <h1 className="text-5xl font-bold mb-4">Fashion Coordinator</h1>
-        <p className="text-xl">Loading...</p>
+    <div className="min-h-screen flex items-center justify-center bg-neutral-950 text-white">
+      <div className="text-center space-y-3">
+        <p className="text-xs uppercase tracking-[0.3em] text-neutral-400">DragFit</p>
+        <h1 className="text-3xl font-semibold tracking-tight">옷장을 손끝으로</h1>
+        <div className="pt-4">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-white animate-pulse mx-1.5 [animation-delay:150ms]" />
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-white animate-pulse [animation-delay:300ms]" />
+        </div>
       </div>
     </div>
   );

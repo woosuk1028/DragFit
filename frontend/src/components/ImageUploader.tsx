@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ChangeEvent } from 'react';
+import { useRef, useState, type ChangeEvent } from 'react';
 import { imagesAPI } from '@/lib/api';
 import { useOutfitStore } from '@/lib/store';
 import type { ClothingCategory } from '@/types';
@@ -17,20 +17,33 @@ const CATEGORIES: { value: ClothingCategory; label: string }[] = [
 ];
 
 export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<ClothingCategory>('top');
   const [tagsInput, setTagsInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const addImage = useOutfitStore((state) => state.addImage);
+
+  const resetFileSelection = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setSelectedFile(file);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setSelectedFile(file);
     setPreviewUrl(URL.createObjectURL(file));
+    setError('');
+    setSuccess('');
   };
 
   const handleUpload = async () => {
@@ -38,6 +51,7 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
 
     setIsLoading(true);
     setError('');
+    setSuccess('');
     try {
       const tags = tagsInput
         .split(',')
@@ -45,10 +59,9 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
         .filter(Boolean);
       const response = await imagesAPI.uploadImage(selectedFile, selectedCategory, tags);
       addImage(response.data);
-      setSelectedFile(null);
       setTagsInput('');
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
+      resetFileSelection();
+      setSuccess('업로드되었습니다.');
       onImageUploaded?.();
     } catch (err: unknown) {
       const message =
@@ -61,52 +74,78 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">옷 이미지 업로드</h3>
+    <div className="bg-white border border-neutral-200/80 rounded-2xl shadow-sm p-6">
+      <div className="flex items-center justify-between mb-5">
+        <h3 className="text-base font-semibold text-neutral-900 tracking-tight">옷 업로드</h3>
+        <span className="text-[11px] uppercase tracking-wider text-neutral-400">PNG · 누끼</span>
+      </div>
 
       <div className="space-y-4">
-        {error && <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">{error}</div>}
+        {error && (
+          <div className="rounded-lg bg-rose-50 border border-rose-100 px-3 py-2 text-sm text-rose-700">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2 text-sm text-emerald-700">
+            {success}
+          </div>
+        )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">카테고리</label>
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value as ClothingCategory)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 focus:ring-2 focus:ring-blue-500"
-          >
+          <label className="block text-xs font-medium text-neutral-500 mb-1.5">카테고리</label>
+          <div className="grid grid-cols-4 gap-1.5">
             {CATEGORIES.map((cat) => (
-              <option key={cat.value} value={cat.value}>
+              <button
+                type="button"
+                key={cat.value}
+                onClick={() => setSelectedCategory(cat.value)}
+                className={`py-2 text-xs font-medium rounded-lg border transition ${
+                  selectedCategory === cat.value
+                    ? 'bg-neutral-900 text-white border-neutral-900'
+                    : 'bg-white text-neutral-700 border-neutral-200 hover:border-neutral-400'
+                }`}
+              >
                 {cat.label}
-              </option>
+              </button>
             ))}
-          </select>
+          </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">태그 (쉼표로 구분)</label>
+          <label className="block text-xs font-medium text-neutral-500 mb-1.5">태그 (쉼표)</label>
           <input
             type="text"
             value={tagsInput}
             onChange={(e) => setTagsInput(e.target.value)}
-            placeholder="예: 캐주얼, 여름, 블루"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
+            placeholder="캐주얼, 여름, 블루"
+            className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-400"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">이미지 파일 (PNG 권장)</label>
+          <label className="block text-xs font-medium text-neutral-500 mb-1.5">이미지 파일</label>
           <input
+            ref={fileInputRef}
             type="file"
             accept="image/*"
             onChange={handleFileChange}
-            className="w-full text-sm text-gray-900 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+            className="block w-full text-sm text-neutral-700 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200 file:cursor-pointer cursor-pointer"
           />
         </div>
 
         {previewUrl && (
-          <div className="border rounded-md p-2 bg-gray-50 flex items-center justify-center">
+          <div className="relative rounded-lg border border-neutral-200 bg-neutral-50 p-3 flex items-center justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={previewUrl} alt="미리보기" className="max-h-48 object-contain" />
+            <img src={previewUrl} alt="미리보기" className="max-h-44 object-contain" />
+            <button
+              type="button"
+              onClick={resetFileSelection}
+              className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white border border-neutral-200 text-neutral-500 hover:bg-neutral-100 flex items-center justify-center text-xs"
+              aria-label="선택 해제"
+            >
+              ✕
+            </button>
           </div>
         )}
 
@@ -114,7 +153,7 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
           type="button"
           onClick={handleUpload}
           disabled={!selectedFile || isLoading}
-          className="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 disabled:opacity-50"
+          className="w-full py-2.5 bg-neutral-900 text-white text-sm font-medium rounded-lg hover:bg-neutral-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {isLoading ? '업로드 중...' : '업로드'}
         </button>

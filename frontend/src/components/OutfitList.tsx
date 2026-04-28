@@ -7,7 +7,6 @@ import type { ClothingImage, Outfit } from '@/types';
 
 const PREVIEW_WIDTH = 320;
 const PREVIEW_HEIGHT = 512;
-// Source canvas size from OutfitCanvas
 const SOURCE_WIDTH = 400;
 const SOURCE_HEIGHT = 640;
 
@@ -62,43 +61,77 @@ export default function OutfitList() {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div>
-        <h3 className="font-semibold text-gray-900 mb-3">내 코디</h3>
-        <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-neutral-900 tracking-tight">내 코디</h3>
+          <span className="text-[11px] text-neutral-400 tracking-widest uppercase">
+            {outfits.length} saved
+          </span>
+        </div>
+
+        <div className="space-y-1.5 max-h-[600px] overflow-y-auto pr-1">
           {outfits.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">아직 저장된 코디가 없습니다.</p>
+            <div className="py-16 text-center border border-dashed border-neutral-200 rounded-xl">
+              <p className="text-sm text-neutral-400">아직 저장된 코디가 없습니다</p>
+              <p className="text-[11px] text-neutral-300 mt-1">코디 만들기 탭에서 시작해보세요</p>
+            </div>
           ) : (
-            outfits.map((outfit) => (
-              <button
-                type="button"
-                key={outfit.id}
-                onClick={() => setSelectedOutfit(outfit)}
-                className={`w-full text-left p-3 rounded-lg border-2 transition ${
-                  selectedOutfit?.id === outfit.id
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-400'
-                }`}
-              >
-                <p className="font-medium text-gray-900">{outfit.name}</p>
-                <p className="text-xs text-gray-500">
-                  {new Date(outfit.createdAt).toLocaleString('ko-KR')} ·{' '}
-                  {outfit.items?.length ?? 0}개 아이템
-                </p>
-              </button>
-            ))
+            outfits.map((outfit) => {
+              const isActive = selectedOutfit?.id === outfit.id;
+              return (
+                <button
+                  type="button"
+                  key={outfit.id}
+                  onClick={() => setSelectedOutfit(outfit)}
+                  className={`w-full text-left p-3 rounded-xl border transition ${
+                    isActive
+                      ? 'border-neutral-900 bg-neutral-50'
+                      : 'border-neutral-200 hover:border-neutral-400'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm text-neutral-900 truncate">
+                        {outfit.name}
+                      </p>
+                      <p className="text-[11px] text-neutral-500 mt-0.5">
+                        {new Date(outfit.createdAt).toLocaleDateString('ko-KR')} ·{' '}
+                        {outfit.items?.length ?? 0}개 아이템
+                      </p>
+                    </div>
+                    {isActive && (
+                      <span className="text-[10px] text-neutral-900 font-medium tracking-wider uppercase whitespace-nowrap">
+                        선택됨
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })
           )}
         </div>
       </div>
 
-      <div>
-        <h3 className="font-semibold text-gray-900 mb-3">미리보기</h3>
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold text-neutral-900 tracking-tight">미리보기</h3>
         {selectedOutfit ? (
           <div className="space-y-3">
             <div
-              className="relative bg-gradient-to-b from-gray-50 to-gray-100 border-2 border-gray-200 rounded-lg overflow-hidden mx-auto"
+              className="relative bg-white border border-neutral-200 rounded-2xl overflow-hidden mx-auto shadow-sm"
               style={{ width: PREVIEW_WIDTH, height: PREVIEW_HEIGHT }}
             >
+              {/* subtle grid */}
+              <div
+                aria-hidden
+                className="absolute inset-0 opacity-[0.04] pointer-events-none"
+                style={{
+                  backgroundImage:
+                    'linear-gradient(to right, #000 1px, transparent 1px), linear-gradient(to bottom, #000 1px, transparent 1px)',
+                  backgroundSize: '16px 16px',
+                }}
+              />
+
               {selectedOutfit.items?.length ? (
                 selectedOutfit.items.map((item) => {
                   const img = imageById(item.clothingImageId);
@@ -120,10 +153,10 @@ export default function OutfitList() {
                         <img
                           src={img.imageUrl}
                           alt={item.category}
-                          className="w-full h-full object-contain drop-shadow"
+                          className="w-full h-full object-contain drop-shadow-sm"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400 bg-gray-200/40 rounded">
+                        <div className="w-full h-full flex items-center justify-center text-[10px] text-neutral-300 bg-neutral-100/40 rounded">
                           이미지 없음
                         </div>
                       )}
@@ -131,23 +164,30 @@ export default function OutfitList() {
                   );
                 })
               ) : (
-                <div className="absolute inset-0 flex items-center justify-center text-gray-400">
+                <div className="absolute inset-0 flex items-center justify-center text-neutral-300 text-xs">
                   비어있는 코디
                 </div>
               )}
             </div>
 
+            <div className="px-1">
+              <p className="text-sm font-medium text-neutral-900">{selectedOutfit.name}</p>
+              <p className="text-[11px] text-neutral-400 mt-0.5">
+                {new Date(selectedOutfit.createdAt).toLocaleString('ko-KR')}
+              </p>
+            </div>
+
             <button
               type="button"
               onClick={() => handleDeleteOutfit(selectedOutfit.id)}
-              className="w-full py-2 bg-red-600 text-white font-medium rounded-md hover:bg-red-700"
+              className="w-full py-2.5 bg-white border border-rose-200 text-rose-600 text-sm font-medium rounded-lg hover:bg-rose-50 transition"
             >
               코디 삭제
             </button>
           </div>
         ) : (
           <div
-            className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center text-gray-400 mx-auto"
+            className="bg-white border border-dashed border-neutral-200 rounded-2xl flex items-center justify-center text-neutral-300 text-xs mx-auto"
             style={{ width: PREVIEW_WIDTH, height: PREVIEW_HEIGHT }}
           >
             왼쪽에서 코디를 선택하세요

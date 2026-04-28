@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Fashion Coordinator',
-  description: 'Build and manage your outfit combinations',
+  title: 'DragFit',
+  description: '드래그로 만드는 나만의 코디 — DragFit',
 };
 
 export default function RootLayout({
@@ -13,7 +13,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <body className="antialiased text-neutral-900 bg-neutral-50">{children}</body>
     </html>
   );
 }

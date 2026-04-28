@@ -87,13 +87,11 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
   const handleSelectImage = (image: ClothingImage) => {
     setPlacements((prev) => {
       const existing = prev[image.category];
-      // If same image already placed → toggle off
       if (existing && existing.image.id === image.id) {
         const next = { ...prev };
         delete next[image.category];
         return next;
       }
-      // Otherwise place at existing position (if swapping) or default
       return {
         ...prev,
         [image.category]: {
@@ -222,22 +220,22 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
   );
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(260px,320px)] gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(240px,300px)] gap-8">
       {/* Canvas */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         <div className="flex items-center gap-2">
           <input
             type="text"
             value={outfitName}
             onChange={(e) => setOutfitName(e.target.value)}
             placeholder="코디 이름"
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-gray-900 focus:ring-2 focus:ring-blue-500"
+            className="flex-1 px-3 py-2 text-sm border border-neutral-200 rounded-lg text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-400"
           />
           <button
             type="button"
             onClick={handleResetLayout}
             disabled={placedCount === 0}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+            className="px-3 py-2 text-xs font-medium border border-neutral-200 rounded-lg text-neutral-700 hover:bg-neutral-50 transition disabled:opacity-40"
           >
             기본 배치
           </button>
@@ -245,10 +243,10 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
 
         {feedback && (
           <div
-            className={`rounded-md p-3 text-sm ${
+            className={`rounded-lg px-3 py-2 text-sm border ${
               feedback.kind === 'ok'
-                ? 'bg-green-50 text-green-800'
-                : 'bg-red-50 text-red-800'
+                ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                : 'bg-rose-50 border-rose-100 text-rose-700'
             }`}
           >
             {feedback.text}
@@ -262,11 +260,22 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
             onPointerUp={endDrag}
             onPointerCancel={endDrag}
             style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT }}
-            className="relative bg-gradient-to-b from-gray-50 to-gray-100 border-2 border-gray-200 rounded-lg overflow-hidden select-none"
+            className="relative bg-white border border-neutral-200 rounded-2xl overflow-hidden select-none shadow-sm"
           >
+            {/* subtle grid backdrop */}
+            <div
+              aria-hidden
+              className="absolute inset-0 opacity-[0.04] pointer-events-none"
+              style={{
+                backgroundImage:
+                  'linear-gradient(to right, #000 1px, transparent 1px), linear-gradient(to bottom, #000 1px, transparent 1px)',
+                backgroundSize: '20px 20px',
+              }}
+            />
+
             {placedCount === 0 && (
-              <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm pointer-events-none">
-                오른쪽 옷장에서 아이템을 선택하면 캔버스에 배치됩니다
+              <div className="absolute inset-0 flex items-center justify-center text-neutral-400 text-xs tracking-wide pointer-events-none px-8 text-center">
+                오른쪽 옷장에서 아이템을 선택하면<br />여기에 배치됩니다
               </div>
             )}
 
@@ -291,20 +300,17 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
                       src={placed.image.imageUrl}
                       alt={CATEGORY_LABEL[category]}
                       draggable={false}
-                      className="w-full h-full object-contain pointer-events-none drop-shadow"
+                      className="w-full h-full object-contain pointer-events-none drop-shadow-sm"
                     />
                     <button
                       type="button"
                       onPointerDown={(e) => e.stopPropagation()}
                       onClick={() => handleClearSlot(category)}
-                      className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow"
+                      className="absolute -top-1 -right-1 bg-neutral-900 text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow"
                       aria-label={`${CATEGORY_LABEL[category]} 제거`}
                     >
                       ✕
                     </button>
-                    <span className="absolute -bottom-1 left-0 bg-white/80 text-gray-700 text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition">
-                      {CATEGORY_LABEL[category]}
-                    </span>
                   </div>
                 );
               },
@@ -316,39 +322,49 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
           type="button"
           onClick={handleSave}
           disabled={isSaving || placedCount === 0}
-          className="w-full py-2.5 px-4 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 disabled:opacity-50"
+          className="w-full py-3 bg-neutral-900 text-white text-sm font-medium rounded-lg hover:bg-neutral-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {isSaving ? '저장 중...' : `코디 저장 (${placedCount})`}
+          {isSaving
+            ? '저장 중...'
+            : placedCount === 0
+              ? '아이템을 추가해 코디를 시작하세요'
+              : `코디 저장 · ${placedCount}개 아이템`}
         </button>
       </div>
 
       {/* Wardrobe sidebar */}
-      <div className="space-y-3">
-        <h3 className="font-semibold text-gray-900">내 옷장</h3>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-neutral-900 tracking-tight">내 옷장</h3>
+          <span className="text-[11px] text-neutral-400 tracking-widest uppercase">
+            {filteredImages.length} · {activeFilter === 'all' ? 'all' : CATEGORY_LABEL[activeFilter]}
+          </span>
+        </div>
 
         <div className="flex flex-wrap gap-1.5">
-          <FilterButton
+          <FilterChip
             active={activeFilter === 'all'}
             onClick={() => setActiveFilter('all')}
           >
             전체
-          </FilterButton>
+          </FilterChip>
           {SLOT_CATEGORIES.map((c) => (
-            <FilterButton
+            <FilterChip
               key={c}
               active={activeFilter === c}
               onClick={() => setActiveFilter(c)}
             >
               {CATEGORY_LABEL[c]}
-            </FilterButton>
+            </FilterChip>
           ))}
         </div>
 
         <div className="grid grid-cols-2 gap-2 max-h-[600px] overflow-y-auto pr-1">
           {filteredImages.length === 0 && (
-            <p className="col-span-2 text-sm text-gray-400 italic text-center py-8">
-              업로드된 옷이 없습니다.
-            </p>
+            <div className="col-span-2 py-12 text-center border border-dashed border-neutral-200 rounded-xl">
+              <p className="text-xs text-neutral-400">업로드된 옷이 없습니다</p>
+              <p className="text-[11px] text-neutral-300 mt-1">오른쪽에서 업로드 →</p>
+            </div>
           )}
           {filteredImages.map((img) => {
             const placed = placements[img.category];
@@ -358,19 +374,25 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
                 type="button"
                 key={img.id}
                 onClick={() => handleSelectImage(img)}
-                className={`relative aspect-square rounded-md border-2 bg-white overflow-hidden transition ${
+                className={`relative aspect-square rounded-lg border bg-white overflow-hidden transition group ${
                   isActive
-                    ? 'border-blue-500 ring-2 ring-blue-200'
-                    : 'border-gray-200 hover:border-gray-400'
+                    ? 'border-neutral-900 ring-2 ring-neutral-900/10'
+                    : 'border-neutral-200 hover:border-neutral-400'
                 }`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={img.imageUrl}
                   alt={img.tags?.join(', ') || img.category}
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-contain p-2"
                 />
-                <span className="absolute bottom-0 inset-x-0 bg-black/55 text-white text-[10px] px-1 py-0.5 text-center">
+                <span
+                  className={`absolute bottom-1 left-1 text-[10px] font-medium px-1.5 py-0.5 rounded transition ${
+                    isActive
+                      ? 'bg-neutral-900 text-white'
+                      : 'bg-white/80 text-neutral-600 group-hover:bg-white'
+                  }`}
+                >
                   {CATEGORY_LABEL[img.category]}
                 </span>
               </button>
@@ -382,7 +404,7 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
   );
 }
 
-function FilterButton({
+function FilterChip({
   active,
   onClick,
   children,
@@ -395,10 +417,10 @@ function FilterButton({
     <button
       type="button"
       onClick={onClick}
-      className={`px-2.5 py-1 text-xs rounded-full border ${
+      className={`px-2.5 py-1 text-xs rounded-full border transition ${
         active
-          ? 'bg-blue-600 text-white border-blue-600'
-          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+          ? 'bg-neutral-900 text-white border-neutral-900'
+          : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400'
       }`}
     >
       {children}
