@@ -21,7 +21,7 @@ export interface OutfitItem {
   outfitId: string;
   clothingImageId: string;
   category: ClothingCategory;
-  position?: { x: number; y: number };
+  position?: { x: number; y: number; z?: number };
 }
 
 export interface Outfit {

@@ -41,9 +41,25 @@ const DEFAULT_POSITION: Record<ClothingCategory, { x: number; y: number }> = {
 interface PlacedItem {
   image: ClothingImage;
   position: { x: number; y: number };
+  z: number;
 }
 
 type Placements = Partial<Record<ClothingCategory, PlacedItem>>;
+
+const zValues = (p: Placements): number[] =>
+  Object.values(p)
+    .filter((v): v is PlacedItem => Boolean(v))
+    .map((v) => v.z);
+
+const nextZ = (p: Placements) => {
+  const zs = zValues(p);
+  return zs.length === 0 ? 1 : Math.max(...zs) + 1;
+};
+
+const minZ = (p: Placements) => {
+  const zs = zValues(p);
+  return zs.length === 0 ? 0 : Math.min(...zs);
+};
 
 interface OutfitCanvasProps {
   onOutfitSaved?: () => void;
@@ -99,8 +115,29 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
         [image.category]: {
           image,
           position: existing?.position ?? DEFAULT_POSITION[image.category],
+          z: nextZ(prev),
         },
       };
+    });
+  };
+
+  const bringToFront = (category: ClothingCategory) => {
+    setPlacements((prev) => {
+      const cur = prev[category];
+      if (!cur) return prev;
+      const top = Math.max(...zValues(prev));
+      if (cur.z === top) return prev;
+      return { ...prev, [category]: { ...cur, z: top + 1 } };
+    });
+  };
+
+  const sendToBack = (category: ClothingCategory) => {
+    setPlacements((prev) => {
+      const cur = prev[category];
+      if (!cur) return prev;
+      const bottom = minZ(prev);
+      if (cur.z === bottom) return prev;
+      return { ...prev, [category]: { ...cur, z: bottom - 1 } };
     });
   };
 
@@ -169,6 +206,8 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
       offsetY: e.clientY - (canvasRect.top + placed.position.y),
     };
     (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+    // Auto bring-to-front on grab so the dragged item is always visible
+    bringToFront(category);
     e.preventDefault();
   };
 
@@ -230,7 +269,11 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
         .map(([category, p]) => ({
           clothingImageId: p.image.id,
           category,
-          position: { x: Math.round(p.position.x), y: Math.round(p.position.y) },
+          position: {
+            x: Math.round(p.position.x),
+            y: Math.round(p.position.y),
+            z: p.z,
+          },
         }));
 
       await outfitsAPI.createOutfit({ name: outfitName.trim(), items });
@@ -324,6 +367,7 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
                       top: placed.position.y,
                       width: w,
                       height: h,
+                      zIndex: placed.z,
                     }}
                     className="absolute group cursor-grab active:cursor-grabbing touch-none"
                   >
@@ -334,6 +378,55 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
                       draggable={false}
                       className="w-full h-full object-contain pointer-events-none drop-shadow-sm"
                     />
+
+                    {/* Z-order toolbar (top-left) */}
+                    <div className="absolute -top-2 -left-1 flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                      <button
+                        type="button"
+                        title="맨 앞으로"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={() => bringToFront(category)}
+                        className="w-6 h-6 rounded-full bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-900 hover:text-white hover:border-neutral-900 flex items-center justify-center shadow-sm transition"
+                        aria-label={`${CATEGORY_LABEL[category]} 맨 앞으로`}
+                      >
+                        <svg
+                          viewBox="0 0 16 16"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.6"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="w-3.5 h-3.5"
+                          aria-hidden="true"
+                        >
+                          <rect x="3" y="3" width="7" height="7" rx="1" />
+                          <rect x="6" y="6" width="7" height="7" rx="1" fill="currentColor" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        title="맨 뒤로"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={() => sendToBack(category)}
+                        className="w-6 h-6 rounded-full bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-900 hover:text-white hover:border-neutral-900 flex items-center justify-center shadow-sm transition"
+                        aria-label={`${CATEGORY_LABEL[category]} 맨 뒤로`}
+                      >
+                        <svg
+                          viewBox="0 0 16 16"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.6"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="w-3.5 h-3.5"
+                          aria-hidden="true"
+                        >
+                          <rect x="6" y="6" width="7" height="7" rx="1" />
+                          <rect x="3" y="3" width="7" height="7" rx="1" fill="currentColor" />
+                        </svg>
+                      </button>
+                    </div>
+
                     <button
                       type="button"
                       onPointerDown={(e) => e.stopPropagation()}

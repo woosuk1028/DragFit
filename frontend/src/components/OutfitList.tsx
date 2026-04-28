@@ -137,6 +137,7 @@ export default function OutfitList() {
                   const img = imageById(item.clothingImageId);
                   const size = ITEM_SIZE_BASE[item.category] ?? { w: 160, h: 160 };
                   const pos = item.position ?? { x: 0, y: 0 };
+                  const z = (item.position as { z?: number } | undefined)?.z;
                   return (
                     <div
                       key={item.id}
@@ -145,6 +146,7 @@ export default function OutfitList() {
                         top: pos.y * SCALE_Y,
                         width: size.w * SCALE_X,
                         height: size.h * SCALE_Y,
+                        zIndex: z,
                       }}
                       className="absolute"
                     >
