@@ -10,10 +10,12 @@
   },
   "dependencies": {
     "@imgly/background-removal": "^1.7.0",
+    "@serwist/next": "^9.5.7",
     "axios": "^1.7.9",
     "next": "^15.1.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "serwist": "^9.5.7",
     "zustand": "^5.0.2"
   },
   "devDependencies": {

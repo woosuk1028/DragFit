@@ -1,18 +1,25 @@
-const { execSync } = require('node:child_process');
+import { execSync } from 'node:child_process';
+import withSerwistInit from '@serwist/next';
 
 const BACKEND = process.env.BACKEND_URL || 'http://localhost:3001';
 
 // Stable build ID so identical source = identical hashes across rebuilds.
-// Prevents "Failed to find Server Action" errors after redeploys when browsers
-// still hold the previous client bundle.
 function resolveBuildId() {
   if (process.env.NEXT_BUILD_ID) return process.env.NEXT_BUILD_ID;
   try {
     return execSync('git rev-parse HEAD').toString().trim();
   } catch {
-    return null; // fall back to Next.js default (random per build)
+    return null;
   }
 }
+
+const withSerwist = withSerwistInit({
+  swSrc: 'src/app/sw.ts',
+  swDest: 'public/sw.js',
+  cacheOnNavigation: true,
+  reloadOnOnline: true,
+  disable: process.env.NODE_ENV === 'development',
+});
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -26,4 +33,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+export default withSerwist(nextConfig);
