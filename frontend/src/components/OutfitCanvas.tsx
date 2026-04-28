@@ -609,26 +609,28 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
                       ✕
                     </button>
 
-                    {/* Resize handle (bottom-right) */}
+                    {/* Resize handle — 큰 hit-area + 모바일에서도 평소에 보이도록 */}
                     <div
                       onPointerDown={(e) => handleResizeStart(e, category)}
                       onPointerMove={handleResizeMove}
                       onPointerUp={handleResizeEnd}
                       onPointerCancel={handleResizeEnd}
-                      className="absolute bottom-0 right-0 w-3 h-3 rounded-[2px] bg-white border border-neutral-300 cursor-nwse-resize opacity-0 group-hover:opacity-100 transition shadow-sm flex items-center justify-center touch-none"
+                      className="absolute bottom-0 right-0 w-9 h-9 cursor-nwse-resize touch-none flex items-end justify-end p-1"
                       aria-label={`${CATEGORY_LABEL[category]} 크기 조절`}
                     >
-                      <svg
-                        viewBox="0 0 12 12"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                        className="w-2 h-2 text-neutral-500"
-                        aria-hidden="true"
-                      >
-                        <path d="M4 10l6-6M7 10l3-3" />
-                      </svg>
+                      <div className="w-5 h-5 rounded-[3px] bg-white border border-neutral-400 shadow-md flex items-center justify-center opacity-70 group-hover:opacity-100 transition">
+                        <svg
+                          viewBox="0 0 12 12"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.6"
+                          strokeLinecap="round"
+                          className="w-3 h-3 text-neutral-700"
+                          aria-hidden="true"
+                        >
+                          <path d="M4 10l6-6M7 10l3-3" />
+                        </svg>
+                      </div>
                     </div>
                   </div>
                 );
