@@ -10,8 +10,7 @@ const PREVIEW_HEIGHT = 512;
 const SOURCE_WIDTH = 400;
 const SOURCE_HEIGHT = 640;
 
-const SCALE_X = PREVIEW_WIDTH / SOURCE_WIDTH;
-const SCALE_Y = PREVIEW_HEIGHT / SOURCE_HEIGHT;
+const SCALE = PREVIEW_WIDTH / SOURCE_WIDTH;
 
 const ITEM_SIZE_BASE: Record<string, { w: number; h: number }> = {
   top: { w: 220, h: 220 },
@@ -132,68 +131,81 @@ export default function OutfitList({ onEditRequest }: OutfitListProps = {}) {
               className="relative bg-white border border-neutral-200 rounded-2xl overflow-hidden mx-auto shadow-sm"
               style={{ width: PREVIEW_WIDTH, height: PREVIEW_HEIGHT }}
             >
-              {/* subtle grid */}
+              {/* 캔버스 좌표계(SOURCE_WIDTH×SOURCE_HEIGHT) 그대로 그리고
+                  컨테이너 자체를 scale 로 축소 → 캔버스와 픽셀-퍼펙트 동일 */}
               <div
-                aria-hidden
-                className="absolute inset-0 opacity-[0.04] pointer-events-none"
+                className="absolute top-0 left-0"
                 style={{
-                  backgroundImage:
-                    'linear-gradient(to right, #000 1px, transparent 1px), linear-gradient(to bottom, #000 1px, transparent 1px)',
-                  backgroundSize: '16px 16px',
+                  width: SOURCE_WIDTH,
+                  height: SOURCE_HEIGHT,
+                  transform: `scale(${SCALE})`,
+                  transformOrigin: 'top left',
                 }}
-              />
+              >
+                {/* subtle grid (캔버스와 동일 backdrop) */}
+                <div
+                  aria-hidden
+                  className="absolute inset-0 opacity-[0.04] pointer-events-none"
+                  style={{
+                    backgroundImage:
+                      'linear-gradient(to right, #000 1px, transparent 1px), linear-gradient(to bottom, #000 1px, transparent 1px)',
+                    backgroundSize: '20px 20px',
+                  }}
+                />
 
-              {selectedOutfit.items?.length ? (
-                [...selectedOutfit.items]
-                  .sort((a, b) => {
-                    const za =
-                      (a.position as { z?: number } | undefined)?.z ?? 0;
-                    const zb =
-                      (b.position as { z?: number } | undefined)?.z ?? 0;
-                    return za - zb;
-                  })
-                  .map((item, idx) => {
-                  const img = imageById(item.clothingImageId);
-                  const baseSize = ITEM_SIZE_BASE[item.category] ?? { w: 160, h: 160 };
-                  const pos = item.position as
-                    | { x: number; y: number; z?: number; w?: number; h?: number }
-                    | undefined;
-                  const x = pos?.x ?? 0;
-                  const y = pos?.y ?? 0;
-                  const w = pos?.w ?? baseSize.w;
-                  const h = pos?.h ?? baseSize.h;
-                  return (
-                    <div
-                      key={item.id}
-                      style={{
-                        left: x * SCALE_X,
-                        top: y * SCALE_Y,
-                        width: w * SCALE_X,
-                        height: h * SCALE_Y,
-                        zIndex: idx + 1,
-                      }}
-                      className="absolute"
-                    >
-                      {img ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={img.imageUrl}
-                          alt={item.category}
-                          className="w-full h-full object-contain drop-shadow-sm"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-[10px] text-neutral-300 bg-neutral-100/40 rounded">
-                          이미지 없음
+                {selectedOutfit.items?.length ? (
+                  [...selectedOutfit.items]
+                    .sort((a, b) => {
+                      const za =
+                        (a.position as { z?: number } | undefined)?.z ?? 0;
+                      const zb =
+                        (b.position as { z?: number } | undefined)?.z ?? 0;
+                      return za - zb;
+                    })
+                    .map((item, idx) => {
+                      const img = imageById(item.clothingImageId);
+                      const baseSize =
+                        ITEM_SIZE_BASE[item.category] ?? { w: 160, h: 160 };
+                      const pos = item.position as
+                        | { x: number; y: number; z?: number; w?: number; h?: number }
+                        | undefined;
+                      const x = pos?.x ?? 0;
+                      const y = pos?.y ?? 0;
+                      const w = pos?.w ?? baseSize.w;
+                      const h = pos?.h ?? baseSize.h;
+                      return (
+                        <div
+                          key={item.id}
+                          style={{
+                            left: x,
+                            top: y,
+                            width: w,
+                            height: h,
+                            zIndex: idx + 1,
+                          }}
+                          className="absolute"
+                        >
+                          {img ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={img.imageUrl}
+                              alt={item.category}
+                              className="w-full h-full object-contain drop-shadow-sm"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-xs text-neutral-300 bg-neutral-100/40 rounded">
+                              이미지 없음
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center text-neutral-300 text-xs">
-                  비어있는 코디
-                </div>
-              )}
+                      );
+                    })
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center text-neutral-300 text-xs">
+                    비어있는 코디
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="px-1">
