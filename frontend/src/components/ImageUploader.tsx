@@ -16,17 +16,65 @@ const CATEGORIES: { value: ClothingCategory; label: string }[] = [
   { value: 'accessories', label: '액세서리' },
 ];
 
-type BgState = 'idle' | 'loading-model' | 'processing' | 'done' | 'error';
+type BgState =
+  | 'idle'
+  | 'loading-model'
+  | 'processing'
+  | 'done'
+  | 'too-empty'
+  | 'error';
+
+// 처리 결과의 불투명 픽셀 비율을 측정 — 너무 적으면 "다 지워진 것"으로 판단
+async function measureOpaqueRatio(blob: Blob): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          URL.revokeObjectURL(url);
+          resolve(1);
+          return;
+        }
+        ctx.drawImage(img, 0, 0);
+        const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        let opaque = 0;
+        const total = canvas.width * canvas.height;
+        for (let i = 3; i < data.length; i += 4) {
+          if (data[i] > 32) opaque++;
+        }
+        URL.revokeObjectURL(url);
+        resolve(opaque / total);
+      } catch (e) {
+        URL.revokeObjectURL(url);
+        reject(e);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('failed to load image'));
+    };
+    img.src = url;
+  });
+}
+
+const MIN_OPAQUE_RATIO = 0.02; // 2% 미만이면 거의 다 지워진 것
 
 export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [originalFile, setOriginalFile] = useState<File | null>(null);
   const [processedFile, setProcessedFile] = useState<File | null>(null);
+  const [emptyProcessedFile, setEmptyProcessedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const [autoBgRemove, setAutoBgRemove] = useState(true);
   const [bgState, setBgState] = useState<BgState>('idle');
   const [bgProgress, setBgProgress] = useState(0);
+  const [opaqueRatio, setOpaqueRatio] = useState<number | null>(null);
 
   const [selectedCategory, setSelectedCategory] = useState<ClothingCategory>('top');
   const [tagsInput, setTagsInput] = useState('');
@@ -35,10 +83,10 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
   const [success, setSuccess] = useState('');
   const addImage = useOutfitStore((state) => state.addImage);
 
+  // 어떤 파일이 미리보기/업로드 대상인지 결정
   const displayFile = autoBgRemove && processedFile ? processedFile : originalFile;
   const fileToUpload = displayFile;
 
-  // Sync preview URL with whichever file is currently being shown
   useEffect(() => {
     if (!displayFile) {
       setPreviewUrl(null);
@@ -52,32 +100,49 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
   const resetAll = () => {
     setOriginalFile(null);
     setProcessedFile(null);
+    setEmptyProcessedFile(null);
     setBgState('idle');
     setBgProgress(0);
+    setOpaqueRatio(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const runBgRemoval = async (file: File) => {
     setBgState('loading-model');
     setBgProgress(0);
+    setOpaqueRatio(null);
+    setEmptyProcessedFile(null);
     try {
       const { removeBackground } = await import('@imgly/background-removal');
       const blob = await removeBackground(file, {
+        // isnet (full fp32) → isnet_fp16 보다 정확. 흰옷/저대비에서 더 잘 잡음
+        model: 'isnet',
         progress: (key, current, total) => {
           if (total > 0) {
             setBgProgress(Math.round((current / total) * 100));
           }
-          // 'fetch:...' = downloading model, 'compute:...' = running inference
           if (key.startsWith('compute')) {
             setBgState('processing');
           }
         },
         output: { format: 'image/png' },
       });
+
       const baseName = file.name.replace(/\.[^.]+$/, '') || 'image';
       const processed = new File([blob], `${baseName}_nobg.png`, { type: 'image/png' });
-      setProcessedFile(processed);
-      setBgState('done');
+
+      // 결과가 거의 비어있으면 (흰옷/저대비 케이스) 자동 적용 안 함
+      const ratio = await measureOpaqueRatio(blob);
+      setOpaqueRatio(ratio);
+
+      if (ratio < MIN_OPAQUE_RATIO) {
+        setEmptyProcessedFile(processed);
+        setProcessedFile(null);
+        setBgState('too-empty');
+      } else {
+        setProcessedFile(processed);
+        setBgState('done');
+      }
       setBgProgress(100);
     } catch (e) {
       console.error('Background removal failed', e);
@@ -90,8 +155,10 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
     if (!file) return;
     setOriginalFile(file);
     setProcessedFile(null);
+    setEmptyProcessedFile(null);
     setBgState('idle');
     setBgProgress(0);
+    setOpaqueRatio(null);
     setError('');
     setSuccess('');
     if (autoBgRemove) {
@@ -101,13 +168,33 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
 
   const handleToggleAutoBg = (next: boolean) => {
     setAutoBgRemove(next);
-    if (next && originalFile && !processedFile && bgState !== 'loading-model' && bgState !== 'processing') {
+    if (
+      next &&
+      originalFile &&
+      !processedFile &&
+      bgState !== 'loading-model' &&
+      bgState !== 'processing'
+    ) {
       runBgRemoval(originalFile);
     }
   };
 
   const handleRetryBgRemoval = () => {
     if (originalFile) runBgRemoval(originalFile);
+  };
+
+  // too-empty 결과를 강제로 사용 (사용자가 "그래도 이걸로" 선택)
+  const handleUseEmptyAnyway = () => {
+    if (!emptyProcessedFile) return;
+    setProcessedFile(emptyProcessedFile);
+    setEmptyProcessedFile(null);
+    setBgState('done');
+  };
+
+  // too-empty 일 때 원본 사용으로 전환
+  const handleUseOriginal = () => {
+    setAutoBgRemove(false);
+    setBgState('idle');
   };
 
   const handleUpload = async () => {
@@ -143,6 +230,7 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
     'loading-model': '모델 로딩...',
     processing: '누끼 처리 중...',
     done: '누끼 완료',
+    'too-empty': '옷을 찾지 못함',
     error: '누끼 실패 — 원본 사용',
   };
 
@@ -198,7 +286,6 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
           />
         </div>
 
-        {/* Auto BG removal toggle */}
         <button
           type="button"
           onClick={() => handleToggleAutoBg(!autoBgRemove)}
@@ -214,7 +301,9 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
             aria-checked={autoBgRemove}
             role="switch"
             className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border transition ${
-              autoBgRemove ? 'bg-neutral-900 border-neutral-900' : 'bg-neutral-200 border-neutral-200'
+              autoBgRemove
+                ? 'bg-neutral-900 border-neutral-900'
+                : 'bg-neutral-200 border-neutral-200'
             }`}
           >
             <span
@@ -280,22 +369,70 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
               </button>
             </div>
 
-            {/* Status row */}
-            {!isBgWorking && originalFile && (
+            {/* too-empty 경고 — 옷이 다 지워진 케이스 */}
+            {bgState === 'too-empty' && (
+              <div className="rounded-lg bg-amber-50 border border-amber-100 px-3 py-2.5 text-xs text-amber-900 space-y-2">
+                <p className="font-medium">
+                  배경과 옷의 색이 비슷해 옷을 찾지 못했어요
+                  {opaqueRatio != null && (
+                    <span className="text-amber-700 font-normal ml-1">
+                      ({(opaqueRatio * 100).toFixed(1)}%)
+                    </span>
+                  )}
+                </p>
+                <p className="text-amber-800/80 leading-relaxed">
+                  흰옷을 흰 배경에서 찍은 경우 자주 발생합니다. 다른 배경(어두운 색)에서 다시
+                  촬영하시거나, 원본 그대로 올려도 됩니다.
+                </p>
+                <div className="flex gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleUseOriginal}
+                    className="flex-1 py-1.5 text-[11px] font-medium rounded-md bg-neutral-900 text-white hover:bg-neutral-800 transition"
+                  >
+                    원본 사용
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRetryBgRemoval}
+                    className="flex-1 py-1.5 text-[11px] font-medium rounded-md bg-white border border-amber-200 text-amber-900 hover:bg-amber-50 transition"
+                  >
+                    다시 시도
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleUseEmptyAnyway}
+                    className="flex-1 py-1.5 text-[11px] font-medium rounded-md bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-50 transition"
+                  >
+                    그래도 적용
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* 일반 상태 */}
+            {!isBgWorking && bgState !== 'too-empty' && originalFile && (
               <div className="flex items-center justify-between text-[11px] px-1">
                 {bgState === 'done' && (
-                  <span className="text-emerald-700">✓ 누끼 처리 완료</span>
+                  <span className="text-emerald-700">
+                    ✓ 누끼 처리 완료
+                    {opaqueRatio != null && (
+                      <span className="text-neutral-400 ml-1">
+                        ({(opaqueRatio * 100).toFixed(0)}% 남김)
+                      </span>
+                    )}
+                  </span>
                 )}
                 {bgState === 'error' && (
                   <span className="text-rose-600">누끼 실패 — 원본으로 업로드됩니다</span>
                 )}
-                {bgState === 'idle' && autoBgRemove === false && (
+                {bgState === 'idle' && !autoBgRemove && (
                   <span className="text-neutral-500">원본 그대로 업로드</span>
                 )}
-                {bgState === 'idle' && autoBgRemove === true && originalFile && (
+                {bgState === 'idle' && autoBgRemove && (
                   <span className="text-neutral-500">누끼 처리 대기 중</span>
                 )}
-                {(bgState === 'error' || bgState === 'idle') && originalFile && autoBgRemove && (
+                {(bgState === 'error' || bgState === 'idle') && autoBgRemove && (
                   <button
                     type="button"
                     onClick={handleRetryBgRemoval}
@@ -312,14 +449,16 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
         <button
           type="button"
           onClick={handleUpload}
-          disabled={!fileToUpload || isLoading || isBgWorking}
+          disabled={!fileToUpload || isLoading || isBgWorking || bgState === 'too-empty'}
           className="w-full py-2.5 bg-neutral-900 text-white text-sm font-medium rounded-lg hover:bg-neutral-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {isLoading
             ? '업로드 중...'
             : isBgWorking
               ? '누끼 처리 후 업로드 가능'
-              : '업로드'}
+              : bgState === 'too-empty'
+                ? '먼저 위에서 선택해주세요'
+                : '업로드'}
         </button>
       </div>
     </div>
