@@ -52,12 +52,14 @@ interface OutfitCanvasProps {
 export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
   const images = useOutfitStore((s) => s.images);
   const setImages = useOutfitStore((s) => s.setImages);
+  const removeImage = useOutfitStore((s) => s.removeImage);
 
   const [outfitName, setOutfitName] = useState('내 코디');
   const [placements, setPlacements] = useState<Placements>({});
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const [activeFilter, setActiveFilter] = useState<ClothingCategory | 'all'>('all');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
@@ -108,6 +110,36 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
       delete next[category];
       return next;
     });
+  };
+
+  const handleDeleteImage = async (image: ClothingImage) => {
+    if (deletingId) return;
+    if (!confirm(`이 ${CATEGORY_LABEL[image.category]} 이미지를 옷장에서 삭제할까요?`)) return;
+
+    setDeletingId(image.id);
+    setFeedback(null);
+
+    // If this image is currently placed on canvas, remove the placement too
+    setPlacements((prev) => {
+      const placed = prev[image.category];
+      if (placed?.image.id === image.id) {
+        const next = { ...prev };
+        delete next[image.category];
+        return next;
+      }
+      return prev;
+    });
+
+    try {
+      await imagesAPI.deleteImage(image.id);
+      removeImage(image.id);
+      setFeedback({ kind: 'ok', text: '옷장에서 삭제했습니다.' });
+    } catch (e) {
+      console.error('Failed to delete image', e);
+      setFeedback({ kind: 'err', text: '삭제에 실패했습니다.' });
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const clampToCanvas = (
@@ -369,16 +401,25 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
           {filteredImages.map((img) => {
             const placed = placements[img.category];
             const isActive = placed?.image.id === img.id;
+            const isDeleting = deletingId === img.id;
             return (
-              <button
-                type="button"
+              <div
                 key={img.id}
-                onClick={() => handleSelectImage(img)}
-                className={`relative aspect-square rounded-lg border bg-white overflow-hidden transition group ${
+                role="button"
+                tabIndex={0}
+                onClick={() => !isDeleting && handleSelectImage(img)}
+                onKeyDown={(e) => {
+                  if ((e.key === 'Enter' || e.key === ' ') && !isDeleting) {
+                    e.preventDefault();
+                    handleSelectImage(img);
+                  }
+                }}
+                aria-label={`${CATEGORY_LABEL[img.category]} 선택`}
+                className={`relative aspect-square rounded-lg border bg-white overflow-hidden transition group cursor-pointer focus:outline-none focus:ring-2 focus:ring-neutral-900/10 ${
                   isActive
                     ? 'border-neutral-900 ring-2 ring-neutral-900/10'
                     : 'border-neutral-200 hover:border-neutral-400'
-                }`}
+                } ${isDeleting ? 'opacity-50 pointer-events-none' : ''}`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -395,7 +436,35 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
                 >
                   {CATEGORY_LABEL[img.category]}
                 </span>
-              </button>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteImage(img);
+                  }}
+                  disabled={isDeleting}
+                  className="absolute top-1 right-1 w-6 h-6 rounded-full bg-white/90 border border-neutral-200 text-neutral-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition shadow-sm"
+                  aria-label={`${CATEGORY_LABEL[img.category]} 옷장에서 삭제`}
+                >
+                  {isDeleting ? (
+                    <span className="text-[10px] tracking-widest">···</span>
+                  ) : (
+                    <svg
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="w-3.5 h-3.5"
+                      aria-hidden="true"
+                    >
+                      <path d="M3 4h10M6 4V2.5h4V4M5 4l.6 9.5h4.8L11 4M7 6.5v5M9 6.5v5" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             );
           })}
         </div>
