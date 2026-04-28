@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { imagesAPI } from '@/lib/api';
 import { useOutfitStore } from '@/lib/store';
 import type { ClothingCategory } from '@/types';
+import ManualCropModal from './ManualCropModal';
 
 interface ImageUploaderProps {
   onImageUploaded?: () => void;
@@ -81,6 +82,7 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [cropOpen, setCropOpen] = useState(false);
   const addImage = useOutfitStore((state) => state.addImage);
 
   // 어떤 파일이 미리보기/업로드 대상인지 결정
@@ -181,6 +183,14 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
 
   const handleRetryBgRemoval = () => {
     if (originalFile) runBgRemoval(originalFile);
+  };
+
+  const handleManualCropSave = (cropped: File) => {
+    setProcessedFile(cropped);
+    setEmptyProcessedFile(null);
+    setBgState('done');
+    setOpaqueRatio(null);
+    setCropOpen(false);
   };
 
   // too-empty 결과를 강제로 사용 (사용자가 "그래도 이걸로" 선택)
@@ -387,26 +397,33 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
                 <div className="flex gap-1.5 pt-1">
                   <button
                     type="button"
-                    onClick={handleUseOriginal}
+                    onClick={() => setCropOpen(true)}
                     className="flex-1 py-1.5 text-[11px] font-medium rounded-md bg-neutral-900 text-white hover:bg-neutral-800 transition"
+                  >
+                    직접 그리기
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleUseOriginal}
+                    className="flex-1 py-1.5 text-[11px] font-medium rounded-md bg-white border border-amber-200 text-amber-900 hover:bg-amber-50 transition"
                   >
                     원본 사용
                   </button>
                   <button
                     type="button"
                     onClick={handleRetryBgRemoval}
-                    className="flex-1 py-1.5 text-[11px] font-medium rounded-md bg-white border border-amber-200 text-amber-900 hover:bg-amber-50 transition"
+                    className="flex-1 py-1.5 text-[11px] font-medium rounded-md bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-50 transition"
                   >
                     다시 시도
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleUseEmptyAnyway}
-                    className="flex-1 py-1.5 text-[11px] font-medium rounded-md bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-50 transition"
-                  >
-                    그래도 적용
-                  </button>
                 </div>
+                <button
+                  type="button"
+                  onClick={handleUseEmptyAnyway}
+                  className="w-full mt-1 py-1 text-[10px] text-amber-700/80 underline underline-offset-2 hover:text-amber-900"
+                >
+                  비어있는 결과 그대로 적용
+                </button>
               </div>
             )}
 
@@ -446,6 +463,28 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
           </div>
         )}
 
+        {originalFile && !isBgWorking && (
+          <button
+            type="button"
+            onClick={() => setCropOpen(true)}
+            className="w-full py-2 text-xs font-medium border border-neutral-200 rounded-lg text-neutral-700 hover:bg-neutral-50 transition flex items-center justify-center gap-1.5"
+          >
+            <svg
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="w-3.5 h-3.5"
+              aria-hidden="true"
+            >
+              <path d="M3 3l5 10 2-4 4-2-11-4z" />
+            </svg>
+            직접 누끼 따기
+          </button>
+        )}
+
         <button
           type="button"
           onClick={handleUpload}
@@ -461,6 +500,14 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
                 : '업로드'}
         </button>
       </div>
+
+      {cropOpen && originalFile && (
+        <ManualCropModal
+          file={displayFile ?? originalFile}
+          onClose={() => setCropOpen(false)}
+          onSave={handleManualCropSave}
+        />
+      )}
     </div>
   );
 }
