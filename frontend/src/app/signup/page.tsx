@@ -34,7 +34,7 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 bg-neutral-50">
+    <div className="min-h-screen grid lg:grid-cols-2 bg-neutral-50 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <div className="hidden lg:flex bg-neutral-950 text-white p-12 flex-col justify-between">
         <p className="text-xs uppercase tracking-[0.3em] text-neutral-400">DragFit</p>
         <div className="space-y-4">

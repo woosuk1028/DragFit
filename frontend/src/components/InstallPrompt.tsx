@@ -52,7 +52,10 @@ export default function InstallPrompt() {
   };
 
   return (
-    <div className="fixed bottom-4 inset-x-4 sm:left-auto sm:right-4 sm:max-w-sm z-40 bg-neutral-900 text-white rounded-2xl shadow-2xl border border-white/10 p-4">
+    <div
+      className="fixed inset-x-4 sm:left-auto sm:right-4 sm:max-w-sm z-40 bg-neutral-900 text-white rounded-2xl shadow-2xl border border-white/10 p-4"
+      style={{ bottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+    >
       <div className="flex items-start gap-3">
         <div className="w-9 h-9 rounded-md bg-white text-neutral-900 flex items-center justify-center font-bold text-base shrink-0">
           D

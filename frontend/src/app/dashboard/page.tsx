@@ -63,8 +63,8 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50">
-      <nav className="bg-white border-b border-neutral-200/80 sticky top-0 z-30 backdrop-blur supports-[backdrop-filter]:bg-white/80">
-        <div className="max-w-7xl mx-auto px-6 h-14 flex justify-between items-center">
+      <nav className="bg-white border-b border-neutral-200/80 sticky top-0 z-30 backdrop-blur supports-[backdrop-filter]:bg-white/80 pt-[env(safe-area-inset-top)]">
+        <div className="max-w-7xl mx-auto px-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] h-14 flex justify-between items-center">
           <div className="flex items-baseline gap-2">
             <h1 className="text-base font-semibold tracking-tight text-neutral-900">DragFit</h1>
             <span className="text-[11px] text-neutral-400 tracking-widest uppercase hidden sm:inline">
@@ -87,7 +87,7 @@ export default function DashboardPage() {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-7xl mx-auto px-6 py-8 pb-[max(2rem,env(safe-area-inset-bottom))]">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
           <div className="bg-white rounded-2xl border border-neutral-200/80 shadow-sm">
             <div className="border-b border-neutral-200/80 flex">

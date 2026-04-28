@@ -33,7 +33,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 bg-neutral-50">
+    <div className="min-h-screen grid lg:grid-cols-2 bg-neutral-50 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       {/* Left brand panel */}
       <div className="hidden lg:flex bg-neutral-950 text-white p-12 flex-col justify-between">
         <div>
