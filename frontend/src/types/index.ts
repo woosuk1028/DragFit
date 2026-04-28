@@ -5,7 +5,7 @@ export interface User {
   createdAt: string;
 }
 
-export type ClothingCategory = 'top' | 'bottom' | 'shoes' | 'accessories';
+export type ClothingCategory = 'top' | 'bottom' | 'shoes' | 'accessories' | 'model';
 
 export interface ClothingImage {
   id: string;
@@ -21,7 +21,7 @@ export interface OutfitItem {
   outfitId: string;
   clothingImageId: string;
   category: ClothingCategory;
-  position?: { x: number; y: number; z?: number };
+  position?: { x: number; y: number; z?: number; w?: number; h?: number };
 }
 
 export interface Outfit {

@@ -37,7 +37,7 @@ export class ImagesController {
     if (!body.category) {
       throw new BadRequestException('Category is required');
     }
-    if (!['top', 'bottom', 'shoes', 'accessories'].includes(body.category)) {
+    if (!['top', 'bottom', 'shoes', 'accessories', 'model'].includes(body.category)) {
       throw new BadRequestException('Invalid category');
     }
 

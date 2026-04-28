@@ -14,7 +14,7 @@ export class ClothingImage {
 
   @Column({
     type: 'enum',
-    enum: ['top', 'bottom', 'shoes', 'accessories'],
+    enum: ['top', 'bottom', 'shoes', 'accessories', 'model'],
   })
   category: string;
 

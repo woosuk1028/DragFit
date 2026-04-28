@@ -18,6 +18,7 @@ const ITEM_SIZE_BASE: Record<string, { w: number; h: number }> = {
   bottom: { w: 200, h: 220 },
   shoes: { w: 160, h: 130 },
   accessories: { w: 120, h: 120 },
+  model: { w: 240, h: 560 },
 };
 
 export default function OutfitList() {
@@ -135,17 +136,23 @@ export default function OutfitList() {
               {selectedOutfit.items?.length ? (
                 selectedOutfit.items.map((item) => {
                   const img = imageById(item.clothingImageId);
-                  const size = ITEM_SIZE_BASE[item.category] ?? { w: 160, h: 160 };
-                  const pos = item.position ?? { x: 0, y: 0 };
-                  const z = (item.position as { z?: number } | undefined)?.z;
+                  const baseSize = ITEM_SIZE_BASE[item.category] ?? { w: 160, h: 160 };
+                  const pos = item.position as
+                    | { x: number; y: number; z?: number; w?: number; h?: number }
+                    | undefined;
+                  const x = pos?.x ?? 0;
+                  const y = pos?.y ?? 0;
+                  const w = pos?.w ?? baseSize.w;
+                  const h = pos?.h ?? baseSize.h;
+                  const z = pos?.z;
                   return (
                     <div
                       key={item.id}
                       style={{
-                        left: pos.x * SCALE_X,
-                        top: pos.y * SCALE_Y,
-                        width: size.w * SCALE_X,
-                        height: size.h * SCALE_Y,
+                        left: x * SCALE_X,
+                        top: y * SCALE_Y,
+                        width: w * SCALE_X,
+                        height: h * SCALE_Y,
                         zIndex: z,
                       }}
                       className="absolute"

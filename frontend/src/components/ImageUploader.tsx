@@ -11,6 +11,7 @@ interface ImageUploaderProps {
 }
 
 const CATEGORIES: { value: ClothingCategory; label: string }[] = [
+  { value: 'model', label: '모델' },
   { value: 'top', label: '상의' },
   { value: 'bottom', label: '하의' },
   { value: 'shoes', label: '신발' },
@@ -270,13 +271,13 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
 
         <div>
           <label className="block text-xs font-medium text-neutral-500 mb-1.5">카테고리</label>
-          <div className="grid grid-cols-4 gap-1.5">
+          <div className="grid grid-cols-5 gap-1.5">
             {CATEGORIES.map((cat) => (
               <button
                 type="button"
                 key={cat.value}
                 onClick={() => setSelectedCategory(cat.value)}
-                className={`py-2 text-xs font-medium rounded-lg border transition ${
+                className={`py-2 text-[11px] font-medium rounded-lg border transition ${
                   selectedCategory === cat.value
                     ? 'bg-neutral-900 text-white border-neutral-900'
                     : 'bg-white text-neutral-700 border-neutral-200 hover:border-neutral-400'

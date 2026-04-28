@@ -32,7 +32,7 @@ api.interceptors.response.use(
 export interface OutfitItemPayload {
   clothingImageId: string;
   category: string;
-  position?: { x: number; y: number; z?: number };
+  position?: { x: number; y: number; z?: number; w?: number; h?: number };
 }
 
 export interface CreateOutfitPayload {

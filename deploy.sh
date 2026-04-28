@@ -25,6 +25,12 @@ npm install
 npm run build
 popd > /dev/null
 ok "backend built"
+
+# Heads-up if there are SQL migrations the user might need to apply manually
+if [ -d backend/migrations ] && [ "$(ls -A backend/migrations 2>/dev/null)" ]; then
+  dim  "  pending SQL migrations (review and run as needed):"
+  ls backend/migrations | sed 's/^/    backend\/migrations\//'
+fi
 echo
 
 # ── Frontend ───────────────────────────────────────────────

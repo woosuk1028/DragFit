@@ -15,13 +15,14 @@ import type { ClothingCategory, ClothingImage } from '@/types';
 const CANVAS_WIDTH = 400;
 const CANVAS_HEIGHT = 640;
 
-const SLOT_CATEGORIES: ClothingCategory[] = ['top', 'bottom', 'shoes', 'accessories'];
+const SLOT_CATEGORIES: ClothingCategory[] = ['model', 'top', 'bottom', 'shoes', 'accessories'];
 
 const CATEGORY_LABEL: Record<ClothingCategory, string> = {
   top: '상의',
   bottom: '하의',
   shoes: '신발',
   accessories: '액세서리',
+  model: '모델',
 };
 
 const ITEM_SIZE: Record<ClothingCategory, { w: number; h: number }> = {
@@ -29,6 +30,7 @@ const ITEM_SIZE: Record<ClothingCategory, { w: number; h: number }> = {
   bottom: { w: 200, h: 220 },
   shoes: { w: 160, h: 130 },
   accessories: { w: 120, h: 120 },
+  model: { w: 240, h: 560 },
 };
 
 const DEFAULT_POSITION: Record<ClothingCategory, { x: number; y: number }> = {
@@ -36,11 +38,15 @@ const DEFAULT_POSITION: Record<ClothingCategory, { x: number; y: number }> = {
   bottom: { x: (CANVAS_WIDTH - 200) / 2, y: 250 },
   shoes: { x: (CANVAS_WIDTH - 160) / 2, y: 490 },
   accessories: { x: 20, y: 20 },
+  model: { x: (CANVAS_WIDTH - 240) / 2, y: (CANVAS_HEIGHT - 560) / 2 },
 };
+
+const MIN_SIZE = 40;
 
 interface PlacedItem {
   image: ClothingImage;
   position: { x: number; y: number };
+  size: { w: number; h: number };
   z: number;
 }
 
@@ -83,6 +89,14 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
     offsetX: number;
     offsetY: number;
   } | null>(null);
+  const resizeRef = useRef<{
+    category: ClothingCategory;
+    startClientX: number;
+    startClientY: number;
+    startW: number;
+    startH: number;
+    aspect: number;
+  } | null>(null);
 
   const loadImages = useCallback(async () => {
     try {
@@ -110,12 +124,15 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
         delete next[image.category];
         return next;
       }
+      // 모델은 기본적으로 맨 뒤 레이어로 (옷이 모델 위에 올라가도록)
+      const z = image.category === 'model' ? minZ(prev) - 1 : nextZ(prev);
       return {
         ...prev,
         [image.category]: {
           image,
           position: existing?.position ?? DEFAULT_POSITION[image.category],
-          z: nextZ(prev),
+          size: existing?.size ?? ITEM_SIZE[image.category],
+          z,
         },
       };
     });
@@ -180,16 +197,14 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
   };
 
   const clampToCanvas = (
-    category: ClothingCategory,
+    w: number,
+    h: number,
     x: number,
     y: number,
-  ): { x: number; y: number } => {
-    const { w, h } = ITEM_SIZE[category];
-    return {
-      x: Math.max(0, Math.min(CANVAS_WIDTH - w, x)),
-      y: Math.max(0, Math.min(CANVAS_HEIGHT - h, y)),
-    };
-  };
+  ): { x: number; y: number } => ({
+    x: Math.max(0, Math.min(CANVAS_WIDTH - w, x)),
+    y: Math.max(0, Math.min(CANVAS_HEIGHT - h, y)),
+  });
 
   const handlePointerDown = (
     e: PointerEvent<HTMLDivElement>,
@@ -218,10 +233,10 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
     const canvasRect = canvas.getBoundingClientRect();
     const rawX = e.clientX - canvasRect.left - drag.offsetX;
     const rawY = e.clientY - canvasRect.top - drag.offsetY;
-    const next = clampToCanvas(drag.category, rawX, rawY);
     setPlacements((prev) => {
       const cur = prev[drag.category];
       if (!cur) return prev;
+      const next = clampToCanvas(cur.size.w, cur.size.h, rawX, rawY);
       return { ...prev, [drag.category]: { ...cur, position: next } };
     });
   };
@@ -237,13 +252,86 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
     }
   };
 
+  const handleResizeStart = (
+    e: PointerEvent<HTMLDivElement>,
+    category: ClothingCategory,
+  ) => {
+    const placed = placements[category];
+    if (!placed) return;
+    e.stopPropagation();
+    resizeRef.current = {
+      category,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      startW: placed.size.w,
+      startH: placed.size.h,
+      aspect: placed.size.w / placed.size.h,
+    };
+    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+    bringToFront(category);
+    e.preventDefault();
+  };
+
+  const handleResizeMove = (e: PointerEvent<HTMLDivElement>) => {
+    const r = resizeRef.current;
+    if (!r) return;
+    const dx = e.clientX - r.startClientX;
+    const dy = e.clientY - r.startClientY;
+    // Lock aspect: scale based on the larger delta on the dominant axis
+    const widthDriven = Math.abs(dx) >= Math.abs(dy);
+    let nextW: number;
+    let nextH: number;
+    if (widthDriven) {
+      nextW = r.startW + dx;
+      nextH = nextW / r.aspect;
+    } else {
+      nextH = r.startH + dy;
+      nextW = nextH * r.aspect;
+    }
+
+    setPlacements((prev) => {
+      const cur = prev[r.category];
+      if (!cur) return prev;
+      // Constrain within canvas relative to current top-left
+      const maxW = CANVAS_WIDTH - cur.position.x;
+      const maxH = CANVAS_HEIGHT - cur.position.y;
+      let w = Math.max(MIN_SIZE, Math.min(maxW, nextW));
+      let h = Math.max(MIN_SIZE, Math.min(maxH, nextH));
+      // Re-apply aspect after clamping
+      if (widthDriven) h = w / r.aspect;
+      else w = h * r.aspect;
+      // One more clamp pass after aspect re-apply
+      w = Math.max(MIN_SIZE, Math.min(maxW, w));
+      h = Math.max(MIN_SIZE, Math.min(maxH, h));
+      return {
+        ...prev,
+        [r.category]: { ...cur, size: { w, h } },
+      };
+    });
+  };
+
+  const handleResizeEnd = (e: PointerEvent<HTMLDivElement>) => {
+    if (resizeRef.current) {
+      try {
+        (e.currentTarget as HTMLDivElement).releasePointerCapture(e.pointerId);
+      } catch {
+        // ignore
+      }
+      resizeRef.current = null;
+    }
+  };
+
   const handleResetLayout = () => {
     setPlacements((prev) => {
       const next: Placements = {};
       (Object.entries(prev) as [ClothingCategory, PlacedItem][]).forEach(
         ([category, placed]) => {
           if (placed) {
-            next[category] = { ...placed, position: DEFAULT_POSITION[category] };
+            next[category] = {
+              ...placed,
+              position: DEFAULT_POSITION[category],
+              size: ITEM_SIZE[category],
+            };
           }
         },
       );
@@ -273,6 +361,8 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
             x: Math.round(p.position.x),
             y: Math.round(p.position.y),
             z: p.z,
+            w: Math.round(p.size.w),
+            h: Math.round(p.size.h),
           },
         }));
 
@@ -357,7 +447,7 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
             {(Object.entries(placements) as [ClothingCategory, PlacedItem][]).map(
               ([category, placed]) => {
                 if (!placed) return null;
-                const { w, h } = ITEM_SIZE[category];
+                const { w, h } = placed.size;
                 return (
                   <div
                     key={category}
@@ -436,6 +526,28 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
                     >
                       ✕
                     </button>
+
+                    {/* Resize handle (bottom-right) */}
+                    <div
+                      onPointerDown={(e) => handleResizeStart(e, category)}
+                      onPointerMove={handleResizeMove}
+                      onPointerUp={handleResizeEnd}
+                      onPointerCancel={handleResizeEnd}
+                      className="absolute -bottom-1 -right-1 w-4 h-4 rounded-sm bg-white border border-neutral-300 cursor-nwse-resize opacity-0 group-hover:opacity-100 transition shadow-sm flex items-center justify-center touch-none"
+                      aria-label={`${CATEGORY_LABEL[category]} 크기 조절`}
+                    >
+                      <svg
+                        viewBox="0 0 12 12"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.4"
+                        strokeLinecap="round"
+                        className="w-2.5 h-2.5 text-neutral-500"
+                        aria-hidden="true"
+                      >
+                        <path d="M3 9l6-6M5 9l4-4M7 9l2-2" />
+                      </svg>
+                    </div>
                   </div>
                 );
               },
