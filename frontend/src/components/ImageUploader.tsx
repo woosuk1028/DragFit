@@ -76,6 +76,7 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
   const [bgState, setBgState] = useState<BgState>('idle');
   const [bgProgress, setBgProgress] = useState(0);
   const [opaqueRatio, setOpaqueRatio] = useState<number | null>(null);
+  const [manualFile, setManualFile] = useState<File | null>(null);
 
   const [selectedCategory, setSelectedCategory] = useState<ClothingCategory>('top');
   const [tagsInput, setTagsInput] = useState('');
@@ -85,8 +86,9 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
   const [cropOpen, setCropOpen] = useState(false);
   const addImage = useOutfitStore((state) => state.addImage);
 
-  // 어떤 파일이 미리보기/업로드 대상인지 결정
-  const displayFile = autoBgRemove && processedFile ? processedFile : originalFile;
+  // 우선순위: 직접 누끼 > 자동 누끼 (토글 ON일 때) > 원본
+  const displayFile =
+    manualFile ?? (autoBgRemove ? processedFile ?? originalFile : originalFile);
   const fileToUpload = displayFile;
 
   useEffect(() => {
@@ -103,6 +105,7 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
     setOriginalFile(null);
     setProcessedFile(null);
     setEmptyProcessedFile(null);
+    setManualFile(null);
     setBgState('idle');
     setBgProgress(0);
     setOpaqueRatio(null);
@@ -158,6 +161,7 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
     setOriginalFile(file);
     setProcessedFile(null);
     setEmptyProcessedFile(null);
+    setManualFile(null);
     setBgState('idle');
     setBgProgress(0);
     setOpaqueRatio(null);
@@ -186,9 +190,8 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
   };
 
   const handleManualCropSave = (cropped: File) => {
-    setProcessedFile(cropped);
+    setManualFile(cropped);
     setEmptyProcessedFile(null);
-    setBgState('done');
     setOpaqueRatio(null);
     setCropOpen(false);
   };
@@ -379,8 +382,36 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
               </button>
             </div>
 
-            {/* too-empty 경고 — 옷이 다 지워진 케이스 */}
-            {bgState === 'too-empty' && (
+            {/* manual crop applied — 자동/원본보다 우선하므로 별도 표시 */}
+            {manualFile && (
+              <div className="rounded-lg bg-neutral-900 text-white px-3 py-2 text-xs flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <svg
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="w-3.5 h-3.5"
+                    aria-hidden="true"
+                  >
+                    <path d="M3 8l3 3 7-7" />
+                  </svg>
+                  직접 누끼 적용됨
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setManualFile(null)}
+                  className="text-white/70 hover:text-white underline underline-offset-2"
+                >
+                  되돌리기
+                </button>
+              </div>
+            )}
+
+            {/* too-empty 경고 — 옷이 다 지워진 케이스 (manual crop 적용 전에만) */}
+            {bgState === 'too-empty' && !manualFile && (
               <div className="rounded-lg bg-amber-50 border border-amber-100 px-3 py-2.5 text-xs text-amber-900 space-y-2">
                 <p className="font-medium">
                   배경과 옷의 색이 비슷해 옷을 찾지 못했어요
@@ -427,8 +458,8 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
               </div>
             )}
 
-            {/* 일반 상태 */}
-            {!isBgWorking && bgState !== 'too-empty' && originalFile && (
+            {/* 일반 상태 (manual crop이 안 걸려있을 때만) */}
+            {!isBgWorking && bgState !== 'too-empty' && originalFile && !manualFile && (
               <div className="flex items-center justify-between text-[11px] px-1">
                 {bgState === 'done' && (
                   <span className="text-emerald-700">
@@ -488,14 +519,19 @@ export default function ImageUploader({ onImageUploaded }: ImageUploaderProps) {
         <button
           type="button"
           onClick={handleUpload}
-          disabled={!fileToUpload || isLoading || isBgWorking || bgState === 'too-empty'}
+          disabled={
+            !fileToUpload ||
+            isLoading ||
+            isBgWorking ||
+            (bgState === 'too-empty' && !manualFile)
+          }
           className="w-full py-2.5 bg-neutral-900 text-white text-sm font-medium rounded-lg hover:bg-neutral-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {isLoading
             ? '업로드 중...'
             : isBgWorking
               ? '누끼 처리 후 업로드 가능'
-              : bgState === 'too-empty'
+              : bgState === 'too-empty' && !manualFile
                 ? '먼저 위에서 선택해주세요'
                 : '업로드'}
         </button>
