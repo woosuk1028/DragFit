@@ -522,10 +522,14 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
               </div>
             )}
 
-            {(Object.entries(placements) as [ClothingCategory, PlacedItem][]).map(
-              ([category, placed]) => {
-                if (!placed) return null;
+            {(Object.entries(placements) as [ClothingCategory, PlacedItem][])
+              .filter((entry): entry is [ClothingCategory, PlacedItem] => Boolean(entry[1]))
+              // 내부 z를 ascending 정렬해서 CSS zIndex는 1..N 으로 매핑.
+              // 내부 z가 음수든 어디든 CSS는 항상 양수 → 캔버스 배경 뒤에 묻히는 일이 없다.
+              .sort(([, a], [, b]) => a.z - b.z)
+              .map(([category, placed], idx) => {
                 const { w, h } = placed.size;
+                const cssZ = idx + 1;
                 return (
                   <div
                     key={category}
@@ -535,7 +539,7 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
                       top: placed.position.y,
                       width: w,
                       height: h,
-                      zIndex: placed.z,
+                      zIndex: cssZ,
                     }}
                     className="absolute group cursor-grab active:cursor-grabbing touch-none"
                   >

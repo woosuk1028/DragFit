@@ -144,7 +144,15 @@ export default function OutfitList({ onEditRequest }: OutfitListProps = {}) {
               />
 
               {selectedOutfit.items?.length ? (
-                selectedOutfit.items.map((item) => {
+                [...selectedOutfit.items]
+                  .sort((a, b) => {
+                    const za =
+                      (a.position as { z?: number } | undefined)?.z ?? 0;
+                    const zb =
+                      (b.position as { z?: number } | undefined)?.z ?? 0;
+                    return za - zb;
+                  })
+                  .map((item, idx) => {
                   const img = imageById(item.clothingImageId);
                   const baseSize = ITEM_SIZE_BASE[item.category] ?? { w: 160, h: 160 };
                   const pos = item.position as
@@ -154,7 +162,6 @@ export default function OutfitList({ onEditRequest }: OutfitListProps = {}) {
                   const y = pos?.y ?? 0;
                   const w = pos?.w ?? baseSize.w;
                   const h = pos?.h ?? baseSize.h;
-                  const z = pos?.z;
                   return (
                     <div
                       key={item.id}
@@ -163,7 +170,7 @@ export default function OutfitList({ onEditRequest }: OutfitListProps = {}) {
                         top: y * SCALE_Y,
                         width: w * SCALE_X,
                         height: h * SCALE_Y,
-                        zIndex: z,
+                        zIndex: idx + 1,
                       }}
                       className="absolute"
                     >
