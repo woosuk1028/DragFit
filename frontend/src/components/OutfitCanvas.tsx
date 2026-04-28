@@ -615,19 +615,19 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
                       onPointerMove={handleResizeMove}
                       onPointerUp={handleResizeEnd}
                       onPointerCancel={handleResizeEnd}
-                      className="absolute -bottom-1 -right-1 w-4 h-4 rounded-sm bg-white border border-neutral-300 cursor-nwse-resize opacity-0 group-hover:opacity-100 transition shadow-sm flex items-center justify-center touch-none"
+                      className="absolute bottom-0 right-0 w-3 h-3 rounded-[2px] bg-white border border-neutral-300 cursor-nwse-resize opacity-0 group-hover:opacity-100 transition shadow-sm flex items-center justify-center touch-none"
                       aria-label={`${CATEGORY_LABEL[category]} 크기 조절`}
                     >
                       <svg
                         viewBox="0 0 12 12"
                         fill="none"
                         stroke="currentColor"
-                        strokeWidth="1.4"
+                        strokeWidth="1.6"
                         strokeLinecap="round"
-                        className="w-2.5 h-2.5 text-neutral-500"
+                        className="w-2 h-2 text-neutral-500"
                         aria-hidden="true"
                       >
-                        <path d="M3 9l6-6M5 9l4-4M7 9l2-2" />
+                        <path d="M4 10l6-6M7 10l3-3" />
                       </svg>
                     </div>
                   </div>
