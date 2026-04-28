@@ -5,6 +5,14 @@ node_modules
 .next
 out
 
+# Serwist (PWA service worker, regenerated on every build)
+public/sw.js
+public/sw.js.map
+public/swe-worker-*.js
+public/swe-worker-*.js.map
+public/workbox-*.js
+public/workbox-*.js.map
+
 # production
 build
 dist
