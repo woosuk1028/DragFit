@@ -75,6 +75,8 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
   const images = useOutfitStore((s) => s.images);
   const setImages = useOutfitStore((s) => s.setImages);
   const removeImage = useOutfitStore((s) => s.removeImage);
+  const editingOutfit = useOutfitStore((s) => s.editingOutfit);
+  const setEditingOutfit = useOutfitStore((s) => s.setEditingOutfit);
 
   const [outfitName, setOutfitName] = useState('내 코디');
   const [placements, setPlacements] = useState<Placements>({});
@@ -82,6 +84,7 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
   const [feedback, setFeedback] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const [activeFilter, setActiveFilter] = useState<ClothingCategory | 'all'>('all');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const loadedEditIdRef = useRef<string | null>(null);
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
@@ -110,6 +113,44 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
   useEffect(() => {
     loadImages();
   }, [loadImages]);
+
+  // 편집 모드 — 저장된 코디를 캔버스 상태로 복원
+  useEffect(() => {
+    if (!editingOutfit) {
+      loadedEditIdRef.current = null;
+      return;
+    }
+    if (loadedEditIdRef.current === editingOutfit.id) return;
+    if (images.length === 0) return; // 이미지 로드 대기
+
+    const next: Placements = {};
+    for (const item of editingOutfit.items ?? []) {
+      const image = images.find((img) => img.id === item.clothingImageId);
+      if (!image) continue;
+      const cat = item.category as ClothingCategory;
+      const baseSize = ITEM_SIZE[cat] ?? { w: 160, h: 160 };
+      const pos = item.position as
+        | { x?: number; y?: number; z?: number; w?: number; h?: number }
+        | undefined;
+      next[cat] = {
+        image,
+        position: { x: pos?.x ?? 0, y: pos?.y ?? 0 },
+        size: { w: pos?.w ?? baseSize.w, h: pos?.h ?? baseSize.h },
+        z: pos?.z ?? 1,
+      };
+    }
+    setPlacements(next);
+    setOutfitName(editingOutfit.name);
+    setFeedback(null);
+    loadedEditIdRef.current = editingOutfit.id;
+  }, [editingOutfit, images]);
+
+  const exitEditMode = () => {
+    setEditingOutfit(null);
+    setPlacements({});
+    setOutfitName('내 코디');
+    setFeedback(null);
+  };
 
   const placedCount = useMemo(
     () => Object.values(placements).filter(Boolean).length,
@@ -366,8 +407,18 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
           },
         }));
 
-      await outfitsAPI.createOutfit({ name: outfitName.trim(), items });
-      setFeedback({ kind: 'ok', text: '코디가 저장되었습니다.' });
+      if (editingOutfit) {
+        await outfitsAPI.updateOutfit(editingOutfit.id, {
+          name: outfitName.trim(),
+          items,
+        });
+        setFeedback({ kind: 'ok', text: '코디가 수정되었습니다.' });
+        setEditingOutfit(null);
+        loadedEditIdRef.current = null;
+      } else {
+        await outfitsAPI.createOutfit({ name: outfitName.trim(), items });
+        setFeedback({ kind: 'ok', text: '코디가 저장되었습니다.' });
+      }
       setPlacements({});
       setOutfitName('내 코디');
       onOutfitSaved?.();
@@ -405,6 +456,33 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
             기본 배치
           </button>
         </div>
+
+        {editingOutfit && (
+          <div className="rounded-lg bg-neutral-900 text-white px-3 py-2 text-xs flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <svg
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-3.5 h-3.5"
+                aria-hidden="true"
+              >
+                <path d="M11 2l3 3-9 9H2v-3z" />
+              </svg>
+              수정 중 · <span className="font-medium">{editingOutfit.name}</span>
+            </span>
+            <button
+              type="button"
+              onClick={exitEditMode}
+              className="text-white/70 hover:text-white underline underline-offset-2"
+            >
+              취소
+            </button>
+          </div>
+        )}
 
         {feedback && (
           <div
@@ -562,10 +640,14 @@ export default function OutfitCanvas({ onOutfitSaved }: OutfitCanvasProps) {
           className="w-full py-3 bg-neutral-900 text-white text-sm font-medium rounded-lg hover:bg-neutral-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {isSaving
-            ? '저장 중...'
+            ? editingOutfit
+              ? '수정 중...'
+              : '저장 중...'
             : placedCount === 0
               ? '아이템을 추가해 코디를 시작하세요'
-              : `코디 저장 · ${placedCount}개 아이템`}
+              : editingOutfit
+                ? `수정 적용 · ${placedCount}개 아이템`
+                : `코디 저장 · ${placedCount}개 아이템`}
         </button>
       </div>
 

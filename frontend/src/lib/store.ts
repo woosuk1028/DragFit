@@ -58,17 +58,20 @@ interface OutfitStore {
   currentOutfit: Outfit | null;
   outfits: Outfit[];
   images: ClothingImage[];
+  editingOutfit: Outfit | null;
   setCurrentOutfit: (outfit: Outfit | null) => void;
   setOutfits: (outfits: Outfit[]) => void;
   setImages: (images: ClothingImage[]) => void;
   addImage: (image: ClothingImage) => void;
   removeImage: (imageId: string) => void;
+  setEditingOutfit: (outfit: Outfit | null) => void;
 }
 
 export const useOutfitStore = create<OutfitStore>((set) => ({
   currentOutfit: null,
   outfits: [],
   images: [],
+  editingOutfit: null,
 
   setCurrentOutfit: (outfit) => set({ currentOutfit: outfit }),
   setOutfits: (outfits) => set({ outfits }),
@@ -76,4 +79,5 @@ export const useOutfitStore = create<OutfitStore>((set) => ({
   addImage: (image) => set((state) => ({ images: [...state.images, image] })),
   removeImage: (imageId) =>
     set((state) => ({ images: state.images.filter((img) => img.id !== imageId) })),
+  setEditingOutfit: (outfit) => set({ editingOutfit: outfit }),
 }));

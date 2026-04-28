@@ -15,8 +15,14 @@ export default function DashboardPage() {
   const hydrate = useAuthStore((s) => s.hydrate);
   const logout = useAuthStore((s) => s.logout);
   const setOutfits = useOutfitStore((s) => s.setOutfits);
+  const editingOutfit = useOutfitStore((s) => s.editingOutfit);
   const [activeTab, setActiveTab] = useState<'builder' | 'list'>('builder');
   const [hydrated, setHydrated] = useState(false);
+
+  // 편집 모드로 진입하면 자동으로 빌더 탭으로
+  useEffect(() => {
+    if (editingOutfit) setActiveTab('builder');
+  }, [editingOutfit]);
 
   useEffect(() => {
     hydrate();
@@ -94,7 +100,9 @@ export default function DashboardPage() {
             </div>
             <div className="p-6">
               {activeTab === 'builder' && <OutfitCanvas onOutfitSaved={loadOutfits} />}
-              {activeTab === 'list' && <OutfitList />}
+              {activeTab === 'list' && (
+                <OutfitList onEditRequest={() => setActiveTab('builder')} />
+              )}
             </div>
           </div>
 

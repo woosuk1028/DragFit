@@ -21,12 +21,22 @@ const ITEM_SIZE_BASE: Record<string, { w: number; h: number }> = {
   model: { w: 240, h: 560 },
 };
 
-export default function OutfitList() {
+interface OutfitListProps {
+  onEditRequest?: () => void;
+}
+
+export default function OutfitList({ onEditRequest }: OutfitListProps = {}) {
   const outfits = useOutfitStore((s) => s.outfits);
   const setOutfits = useOutfitStore((s) => s.setOutfits);
   const images = useOutfitStore((s) => s.images);
   const setImages = useOutfitStore((s) => s.setImages);
+  const setEditingOutfit = useOutfitStore((s) => s.setEditingOutfit);
   const [selectedOutfit, setSelectedOutfit] = useState<Outfit | null>(null);
+
+  const handleEditOutfit = (outfit: Outfit) => {
+    setEditingOutfit(outfit);
+    onEditRequest?.();
+  };
 
   const loadOutfits = useCallback(async () => {
     try {
@@ -186,13 +196,22 @@ export default function OutfitList() {
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => handleDeleteOutfit(selectedOutfit.id)}
-              className="w-full py-2.5 bg-white border border-rose-200 text-rose-600 text-sm font-medium rounded-lg hover:bg-rose-50 transition"
-            >
-              코디 삭제
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => handleEditOutfit(selectedOutfit)}
+                className="flex-1 py-2.5 bg-neutral-900 text-white text-sm font-medium rounded-lg hover:bg-neutral-800 transition"
+              >
+                코디 수정
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteOutfit(selectedOutfit.id)}
+                className="px-4 py-2.5 bg-white border border-rose-200 text-rose-600 text-sm font-medium rounded-lg hover:bg-rose-50 transition"
+              >
+                삭제
+              </button>
+            </div>
           </div>
         ) : (
           <div
